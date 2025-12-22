@@ -157,7 +157,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-200 selection:bg-blue-500/30 transition-colors duration-300 p-3 md:p-8">
+<body class="bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-200 selection:bg-blue-500/30 transition-colors duration-300 p-2 md:p-4">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -516,7 +516,8 @@
                                     <div className="relative">
                                         <div className="flex justify-between text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
                                             <span>{t[timeLeft.status]}</span>
-                                            <span className="tabular-nums">{timeLeft.seconds}s</span>
+                                            {/* Modified: Added font-rounded and font-bold to seconds */}
+                                            <span className="tabular-nums font-rounded font-bold">{timeLeft.seconds}s</span>
                                         </div>
                                         
                                         <div className="flex justify-between gap-[2px] h-3 w-full">
@@ -544,37 +545,55 @@
         
         // --- Pixel Chart Component ---
         const PixelChart = ({ data, t }) => {
+            // New state for handling hover
+            const [hoveredItem, setHoveredItem] = useState(null);
+
             if (!data || data.length === 0) return null;
 
             const maxVol = Math.max(...data.map(d => Math.max(d.volume, d.userVolume || 0))) * 1.2;
             const gridRows = 20; 
 
             return (
-                <div className="w-full h-full flex flex-col items-center justify-end pb-2 pt-8">
-                     <div className="w-full h-[360px] flex items-end justify-between px-2 gap-2 overflow-x-auto custom-scrollbar group/chart">
+                <div className="w-full h-full flex flex-col items-center justify-end pb-2 pt-8 relative">
+                     {/* Fixed Top Tooltip Overlay - Solves clipping issues */}
+                     <div className={`absolute top-0 left-0 w-full flex justify-center z-30 pointer-events-none transition-all duration-300 ${hoveredItem ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
+                        {hoveredItem && (
+                            <div className="bg-slate-900/95 dark:bg-black/90 text-white text-[11px] px-4 py-2 rounded-full backdrop-blur-md border border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex gap-6 items-center">
+                                <div className="font-bold text-indigo-300 border-r border-white/20 pr-4">{hoveredItem.displayDay}</div>
+                                <div className="flex gap-4">
+                                     <div className="flex items-center gap-2">
+                                        <span className="text-slate-400 uppercase text-[9px] font-bold tracking-wider">Threshold</span>
+                                        <span className="font-mono text-blue-400 font-bold text-sm">${hoveredItem.volume.toLocaleString()}</span>
+                                     </div>
+                                     <div className="w-[1px] h-4 bg-white/10"></div>
+                                     <div className="flex items-center gap-2">
+                                        <span className="text-slate-400 uppercase text-[9px] font-bold tracking-wider">You</span>
+                                        <span className={`font-mono font-bold text-sm ${hoveredItem.userVolume >= hoveredItem.volume ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                            ${hoveredItem.userVolume.toLocaleString()}
+                                        </span>
+                                     </div>
+                                </div>
+                            </div>
+                        )}
+                     </div>
+
+                     <div className="w-full h-[360px] flex items-end justify-between px-2 gap-2 overflow-x-auto custom-scrollbar group/chart relative z-10">
                         {data.map((item, index) => {
                             const thresholdBlocks = Math.ceil((item.volume / maxVol) * gridRows);
                             const userBlocks = Math.ceil((item.userVolume / maxVol) * gridRows);
                             const isSafe = item.userVolume >= item.volume;
+                            const isHovered = hoveredItem && hoveredItem.id === item.id;
                             
                             return (
-                                <div key={index} className="flex flex-col items-center gap-2 group min-w-[40px] transition-opacity duration-300 hover:!opacity-100 group-hover/chart:opacity-40">
-                                    {/* Tooltip Wrapper */}
+                                <div 
+                                    key={index} 
+                                    className={`flex flex-col items-center gap-2 group min-w-[40px] transition-all duration-200 cursor-crosshair ${hoveredItem && !isHovered ? 'opacity-30 scale-95' : 'opacity-100 scale-100'}`}
+                                    onMouseEnter={() => setHoveredItem(item)}
+                                    onMouseLeave={() => setHoveredItem(null)}
+                                >
+                                    {/* Tooltip Removed from here to prevent clipping */}
                                     <div className="relative flex items-end gap-[2px] h-[300px]">
                                         
-                                        {/* Hover Tooltip */}
-                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 z-20 pointer-events-none">
-                                            <div className="bg-slate-900/90 text-white text-[10px] p-2 rounded-lg backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(99,102,241,0.5)]">
-                                                <div className="font-bold mb-1 border-b border-white/10 pb-1 text-center">{item.displayDay}</div>
-                                                <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                                                     <span className="text-slate-400">Threshold:</span>
-                                                     <span className="font-mono text-blue-400">${item.volume.toLocaleString()}</span>
-                                                     <span className="text-slate-400">You:</span>
-                                                     <span className={`font-mono ${isSafe ? 'text-emerald-400' : 'text-rose-400'}`}>${item.userVolume.toLocaleString()}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
                                         {/* Threshold Column (Blue) */}
                                         <div className="flex flex-col-reverse gap-[1px]">
                                             {[...Array(gridRows)].map((_, i) => (
@@ -607,7 +626,7 @@
                                     </div>
                                     
                                     {/* Axis Label */}
-                                    <span className="text-[9px] font-mono font-bold text-slate-400 dark:text-slate-600 uppercase">
+                                    <span className={`text-[9px] font-mono font-bold uppercase transition-colors ${isHovered ? 'text-indigo-500 dark:text-indigo-400 scale-110' : 'text-slate-400 dark:text-slate-600'}`}>
                                         {item.displayDay.split(' ')[1]}
                                     </span>
                                 </div>
@@ -1615,11 +1634,11 @@
             };
 
             return (
-                <div className="min-h-screen bg-slate-50 dark:bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] dark:from-[#0f172a] dark:via-[#000000] dark:to-[#000000] transition-all duration-300 flex flex-col p-4 md:p-8">
+                <div className="min-h-screen bg-slate-50 dark:bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] dark:from-[#0f172a] dark:via-[#000000] dark:to-[#000000] transition-all duration-300 flex flex-col p-2 md:p-4">
                     <div className="max-w-6xl mx-auto flex-1 w-full">
                         {/* Header */}
-                        <header className="flex flex-col md:flex-row justify-between mb-6 md:mb-8 gap-4 md:gap-6 items-start md:items-center">
-                            <div className="flex w-full md:w-auto flex-col gap-4">
+                        <header className="flex flex-col md:flex-row justify-between mb-4 md:mb-6 gap-2 md:gap-6 items-start md:items-center">
+                            <div className="flex w-full md:w-auto flex-col gap-0.5 md:gap-1">
                                 {/* Brand Logo & Title Row */}
                                 <div className="flex items-center justify-between md:justify-start gap-4">
                                     <div className="flex items-center gap-2 mb-1 animate-in fade-in slide-in-from-left-2">
@@ -1671,7 +1690,8 @@
                                                 {isLivePrice ? t.priceLive : t.priceEst}
                                             </span>
                                         </span>
-                                        <span className="text-sm font-mono font-bold text-slate-800 dark:text-white tracking-tight flex items-center gap-1 ml-auto md:ml-0">
+                                        {/* Modified: Changed font-mono to font-rounded */}
+                                        <span className="text-sm font-rounded font-bold text-slate-800 dark:text-white tracking-tight flex items-center gap-1 ml-auto md:ml-0">
                                             ${coinPrice > 1 ? coinPrice.toLocaleString(undefined, {maximumFractionDigits: 2}) : coinPrice.toFixed(6)}
                                         </span>
                                     </div>
@@ -1815,7 +1835,8 @@
                                                     </div>
                                                     <div className="text-indigo-900/70 dark:text-indigo-200/70 text-xs font-bold uppercase tracking-widest">{t.historySnapshot}</div>
                                                 </div>
-                                                <span className="bg-white/80 dark:bg-indigo-900/40 px-2 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-500/30 text-xs text-indigo-600 dark:text-indigo-300 font-mono font-bold">
+                                                {/* Modified: Changed font-mono to font-rounded for the count badge */}
+                                                <span className="bg-white/80 dark:bg-indigo-900/40 px-2 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-500/30 text-xs text-indigo-600 dark:text-indigo-300 font-rounded font-bold">
                                                     {dataList.length}
                                                 </span>
                                             </div>
@@ -1845,20 +1866,28 @@
                                                 const gapPercent = item.volume > 0 ? (gap / item.volume * 100) : 0;
 
                                                 return (
-                                                    <div key={item.id} className={`group/item relative p-2 border rounded-xl transition-all duration-300 hover:shadow-lg dark:hover:shadow-black/50 backdrop-blur-md ${
+                                                    <div key={item.id} className={`group/item relative p-2 border rounded-xl transition-all duration-300 hover:shadow-lg dark:hover:shadow-black/50 backdrop-blur-md overflow-hidden ${
                                                         isSafe 
-                                                        ? 'bg-gradient-to-br from-emerald-50/80 to-teal-50/50 dark:from-[#064e3b]/40 dark:to-[#0f766e]/20 border-emerald-200 dark:border-emerald-500/30 hover:border-emerald-300 dark:hover:border-emerald-400/50' 
-                                                        : 'bg-gradient-to-br from-rose-50/80 to-orange-50/50 dark:from-[#7f1d1d]/40 dark:to-[#7c2d12]/20 border-rose-200 dark:border-rose-500/30 hover:border-rose-300 dark:hover:border-rose-400/50'
+                                                        ? 'bg-gradient-to-br from-emerald-100/60 to-teal-50/50 dark:from-[#064e3b]/60 dark:to-[#0f766e]/30 border-emerald-200 dark:border-emerald-500/30 hover:border-emerald-300 dark:hover:border-emerald-400/50' 
+                                                        : 'bg-gradient-to-br from-rose-100/60 to-orange-50/50 dark:from-[#7f1d1d]/60 dark:to-[#7c2d12]/30 border-rose-200 dark:border-rose-500/30 hover:border-rose-300 dark:hover:border-rose-400/50'
                                                     }`}>
                                                         
+                                                        {/* NEW: Decorative Background Watermark */}
+                                                        <div className={`absolute -right-4 -bottom-4 opacity-[0.06] dark:opacity-[0.08] transform -rotate-12 scale-150 pointer-events-none transition-transform duration-500 group-hover/item:scale-125 group-hover/item:rotate-0 ${isSafe ? 'text-emerald-800 dark:text-emerald-300' : 'text-rose-800 dark:text-rose-300'}`}>
+                                                            <Icon name={isSafe ? "shield-check" : "trending-down"} size={80} />
+                                                        </div>
+                                                        {/* NEW: Hover Highlight Overlay */}
+                                                        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/40 to-transparent dark:from-white/5 opacity-0 group-hover/item:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                                        
                                                         {/* Row Header */}
-                                                        <div className="flex justify-between items-center mb-1.5 px-1">
+                                                        <div className="flex justify-between items-center mb-1.5 px-1 relative z-10">
                                                             <div className="flex items-center gap-1.5">
                                                                 <div className={`w-1.5 h-1.5 rounded-full ${item.source === 'ai' ? 'bg-cyan-400 shadow-sm' : 'bg-purple-400 shadow-sm'}`} />
-                                                                <span className={`text-[10px] font-bold ${isSafe ? 'text-emerald-800 dark:text-emerald-200' : 'text-rose-800 dark:text-rose-200'}`}>{item.displayDay}</span>
+                                                                {/* Modified: Added font-rounded to Day X */}
+                                                                <span className={`text-[10px] font-rounded font-bold ${isSafe ? 'text-emerald-800 dark:text-emerald-200' : 'text-rose-800 dark:text-rose-200'}`}>{item.displayDay}</span>
                                                                 
-                                                                {/* Date Badge - Compact */}
-                                                                <span className={`text-[8px] font-mono font-bold px-1 py-0.5 rounded-[4px] ml-0.5 shadow-sm leading-none ${
+                                                                {/* Date Badge - Compact - Modified: Changed font-mono to font-rounded */}
+                                                                <span className={`text-[8px] font-rounded font-bold px-1 py-0.5 rounded-[4px] ml-0.5 shadow-sm leading-none ${
                                                                     isSafe 
                                                                     ? 'bg-emerald-100/80 dark:bg-emerald-500/30 text-emerald-800 dark:text-emerald-100 border border-emerald-200/50 dark:border-emerald-400/20' 
                                                                     : 'bg-rose-100/80 dark:bg-rose-500/30 text-rose-800 dark:text-rose-100 border border-rose-200/50 dark:border-rose-400/20'
@@ -1879,23 +1908,24 @@
                                                             </button>
                                                         </div>
 
-                                                        <div className="grid grid-cols-2 gap-2">
+                                                        <div className="grid grid-cols-2 gap-2 relative z-10">
                                                             {/* Threshold - High Contrast Bg */}
-                                                            <div className="p-1.5 rounded-lg bg-white/80 dark:bg-black/40 border border-slate-200 dark:border-white/10 flex flex-col justify-center shadow-sm">
+                                                            <div className="p-1.5 rounded-lg bg-white/80 dark:bg-black/40 border border-slate-200 dark:border-white/10 flex flex-col justify-center shadow-sm backdrop-blur-sm">
                                                                 <span className="text-[8px] text-slate-500 dark:text-slate-400 font-extrabold uppercase flex items-center gap-1 tracking-wider">
                                                                     <Icon name="crosshair" size={8} />
                                                                     {t.legendThreshold}
                                                                 </span>
+                                                                {/* Modified: font-rounded already present, ensured consistency */}
                                                                 <span className="text-sm font-rounded font-bold text-slate-700 dark:text-slate-200 leading-tight mt-0.5">
                                                                     ${item.volume.toLocaleString()}
                                                                 </span>
                                                             </div>
 
                                                             {/* User Volume - Color Coded Bg */}
-                                                            <div className={`p-1.5 rounded-lg border flex flex-col justify-center relative overflow-hidden shadow-sm ${
+                                                            <div className={`p-1.5 rounded-lg border flex flex-col justify-center relative overflow-hidden shadow-sm backdrop-blur-sm ${
                                                                 isSafe 
-                                                                ? 'bg-emerald-100 dark:bg-emerald-500/20 border-emerald-200 dark:border-emerald-500/30' 
-                                                                : 'bg-rose-100 dark:bg-rose-500/20 border-rose-200 dark:border-rose-500/30'
+                                                                ? 'bg-emerald-100/80 dark:bg-emerald-500/20 border-emerald-200 dark:border-emerald-500/30' 
+                                                                : 'bg-rose-100/80 dark:bg-rose-500/20 border-rose-200 dark:border-rose-500/30'
                                                             }`}>
                                                                 <span className={`text-[8px] font-extrabold uppercase flex items-center gap-1 tracking-wider ${isSafe ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                                                                     <Icon name="user" size={8} />
@@ -1903,10 +1933,12 @@
                                                                 </span>
                                                                 
                                                                 <div className="flex items-baseline gap-1 mt-0.5">
+                                                                    {/* Modified: font-rounded already present */}
                                                                     <span className={`text-sm font-rounded font-bold leading-tight ${isSafe ? 'text-emerald-800 dark:text-white' : 'text-rose-800 dark:text-white'}`}>
                                                                         ${item.userVolume.toLocaleString()}
                                                                     </span>
-                                                                    <span className={`text-[8px] font-black ${isSafe ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                                    {/* Modified: Font size increased from text-[8px] to text-sm to match volume number */}
+                                                                    <span className={`text-sm font-rounded font-extrabold ${isSafe ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                                                         {gapPercent > 0 ? '+' : ''}{gapPercent.toFixed(1)}%
                                                                     </span>
                                                                 </div>
@@ -2166,7 +2198,8 @@
                         <div className="grid grid-cols-2 sm:flex sm:flex-row justify-center items-center gap-3">
                             <div className="flex items-center justify-center gap-2 h-10 px-4 md:px-6 bg-white dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50 backdrop-blur-md shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all cursor-default group">
                                 <Icon name="tag" size={16} className="text-slate-500 dark:text-slate-400 group-hover:text-emerald-400 transition-colors" />
-                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors">v8</span>
+                                {/* Modified: Updated version from v8 to v9 */}
+                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors">v9</span>
                             </div>
 
                             <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
